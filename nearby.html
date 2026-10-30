@@ -1,0 +1,173 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>제주 내 주변 탐방</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js"></script>
+<style>
+:root{--bg:#f6f7f9;--card:#fff;--tx:#1d2733;--mut:#6b7785;--line:#e2e6eb;--pri:#0b6e8a;--pri2:#e3f2f6;--hi:#e8590c}
+@media (prefers-color-scheme:dark){:root{--bg:#14181d;--card:#1d232a;--tx:#e6eaee;--mut:#97a3b0;--line:#2d353e;--pri:#4cc0dc;--pri2:#1b3640;--hi:#ff8c4a}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font:14px/1.5 "Malgun Gothic",system-ui,sans-serif}
+header{padding:16px 20px;border-bottom:1px solid var(--line);background:var(--card);display:flex;gap:12px;align-items:baseline;flex-wrap:wrap}
+h1{margin:0;font-size:20px}header small{color:var(--mut)}a{color:var(--pri)}
+.wrap{display:grid;grid-template-columns:minmax(0,420px) minmax(0,1fr);gap:16px;padding:16px 20px;align-items:start}
+@media(max-width:900px){.wrap{grid-template-columns:1fr}.mapcol{order:-1;position:static!important}#map{height:320px!important}}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px}
+.ctl{padding:14px;display:grid;gap:10px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+button,select{font:inherit;color:var(--tx);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:7px 10px;cursor:pointer}
+button.main{background:var(--pri);color:#fff;border-color:var(--pri)}
+label{color:var(--mut);font-size:13px}
+#status{color:var(--mut);font-size:13px}
+.list{display:grid;gap:10px;margin-top:16px}
+.place{padding:12px 14px;cursor:pointer}
+.place:hover,.place.sel{border-color:var(--pri);background:var(--pri2)}
+.place h3{margin:0 0 4px;font-size:16px;display:flex;gap:8px;align-items:baseline}
+.place h3 em{margin-left:auto;font-style:normal;color:var(--hi);font-weight:700;white-space:nowrap}
+.tag{display:inline-block;padding:1px 8px;border-radius:10px;background:var(--pri2);color:var(--pri);font-size:12px;margin-right:4px}
+.place p{margin:4px 0;font-size:13px}.mut{color:var(--mut)}
+details{margin-top:6px}summary{cursor:pointer;color:var(--pri)}
+.full{white-space:pre-wrap;margin-top:6px;font-size:13px}
+.mapcol{position:sticky;top:12px}
+#map{height:calc(100vh - 110px);min-height:360px;border-radius:10px;z-index:0}
+.me{width:22px;height:22px;border-radius:50%;background:#1a73e8;border:3px solid #fff;box-shadow:0 0 0 4px #1a73e855}
+.empty{padding:24px;text-align:center;color:var(--mut)}
+.pop h4{margin:0 0 4px;font-size:15px}.pop p{margin:4px 0;font-size:13px}
+.num{width:28px;height:28px;border-radius:50%;background:var(--hi);color:#fff;font-weight:700;display:flex;align-items:center;justify-content:center;border:2px solid #fff;box-shadow:0 1px 4px #0006}
+.fav{font:inherit;cursor:pointer;border:1px solid var(--hi);background:transparent;color:var(--hi);border-radius:16px;padding:2px 12px}
+.fav.on{background:var(--hi);color:#fff}
+.course{padding:12px 16px;margin-top:16px}.course h3{margin:0 0 8px;font-size:15px}
+.course ol{margin:0;padding:0;list-style:none;max-height:220px;overflow:auto}
+.course li{display:flex;gap:6px;align-items:center;padding:5px 0;border-top:1px solid var(--line)}
+.course li b{flex:1;cursor:pointer}.course li small{color:var(--mut)}
+.course .acts{margin-top:8px;display:flex;gap:6px}
+.course button{padding:1px 7px}
+.btn-go{margin-left:auto;display:inline-block;padding:8px 16px;border-radius:20px;font-weight:700;text-decoration:none;align-self:center;background:#f59300;color:#fff!important;text-shadow:0 1px 2px #0004;border:2px solid #f59300}.btn-go:hover{background:#ffa21f}
+.btn-back{display:inline-block;padding:8px 16px;border-radius:20px;font-weight:700;text-decoration:none;align-self:center;background:#fff;color:#f59300!important;border:2px solid #f59300}.btn-back:hover{background:#fff3e6}
+.loading .wrap{display:none}.boot{padding:40px 20px;text-align:center;color:var(--mut)}.boot small{display:block;margin-top:8px;color:var(--hi)}
+</style>
+</head>
+<body class="loading">
+<header><a class="btn-back" href="index.html">← 전체 조회·답사 코스</a><h1>제주 내 주변 탐방</h1><small>내 위치에서 가까운 역사·문화 장소</small></header>
+<div class="wrap">
+ <section>
+  <div class="card ctl">
+   <div class="row"><button class="main" id="gps">📍 내 위치 찾기</button>
+    <select id="preset"><option value="">또는 기준 장소 선택</option></select></div>
+   <div class="row"><label>반경 <select id="rad"><option value="1">1km</option><option value="3">3km</option><option value="5" selected>5km</option><option value="10">10km</option><option value="20">20km</option><option value="100">제주 전체</option></select></label>
+    <label>분류 <select id="cat"><option value="">전체</option></select></label></div>
+   <div id="status">위치를 정하면 가까운 순서로 보여드립니다. 지도를 직접 눌러 위치를 지정할 수도 있어요.</div>
+  </div>
+  <div class="card course" id="course"></div>
+  <div class="list" id="list"></div>
+ </section>
+ <div class="mapcol card"><div id="map"></div></div>
+</div>
+<div id="boot" class="boot">데이터를 불러오는 중…</div>
+<script type="text/plain" id="app">const DATA=window.__DATA;
+const $=id=>document.getElementById(id);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const km=(a,b)=>{const r=Math.PI/180,x=Math.sin((b.lat-a.lat)*r/2)**2+Math.cos(a.lat*r)*Math.cos(b.lat*r)*Math.sin((b.lng-a.lng)*r/2)**2;return 12742*Math.asin(Math.sqrt(x))};
+const PRESETS=[['제주국제공항',33.5066,126.4929],['제주시청',33.4996,126.5312],['서귀포시청',33.2541,126.5601],['성산일출봉 인근',33.4580,126.9425],['협재 해수욕장 인근',33.3940,126.2390],['중문관광단지',33.2480,126.4100]];
+PRESETS.forEach((p,i)=>$('preset').add(new Option(p[0],i)));
+[...new Set(DATA.map(d=>d.cat))].sort().forEach(c=>$('cat').add(new Option(c,c)));
+let me=null,sel=null,markers={},cur=[];
+let favs=[];try{favs=JSON.parse(localStorage.getItem('jejuFavs')||'[]').filter(id=>DATA.some(d=>d.id===id))}catch(e){}
+const saveFavs=()=>{try{localStorage.setItem('jejuFavs',JSON.stringify(favs))}catch(e){}};
+const byId=id=>DATA.find(x=>x.id===id);
+const favBtn=d=>{const n=favs.indexOf(d.id);return `<button class="fav ${n<0?'':'on'}" onclick="toggleFav('${d.id}')" data-id="${d.id}">${n<0?'♡ 찜하기':'♥ 찜 #'+(n+1)}</button>`};
+let defIcon,fline;
+const sum=d=>(d.abs||d.content||'').replace(/\s+/g,' ');
+const pop=d=>`<div class="pop"><h4>${esc(d.name)}</h4><span class="tag">${esc(d.cat)}</span>${d.title?`<p><b>${esc(d.title)}</b></p>`:''}<p>${esc(d.addr)}</p><p>${favBtn(d)}</p><p><a target="_blank" rel="noopener" href="https://www.google.com/maps/dir/?api=1&destination=${d.lat},${d.lng}">길찾기 ↗</a> · <a target="_blank" rel="noopener" href="${esc(d.url)}">원문 ↗</a></p></div>`;
+if(!window.L){$('map').innerHTML='<div class="empty">지도 라이브러리를 불러오지 못했습니다. 인터넷 연결을 확인하세요.</div>'}
+const map=window.L&&L.map('map').setView([33.38,126.55],9);
+let layer,circle,route,meMk;
+if(map){
+ L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}',{maxZoom:16,maxNativeZoom:13,attribution:'Tiles &copy; Esri'}).addTo(map);
+ layer=L.layerGroup().addTo(map);
+ defIcon=new L.Icon.Default();fline=L.polyline([],{color:'#e8590c',weight:4,opacity:.9}).addTo(map);
+ route=L.polyline([],{color:'#e8590c',weight:3,dashArray:'6 6'}).addTo(map);
+ DATA.forEach(d=>{markers[d.id]=L.marker([d.lat,d.lng],{title:d.name}).bindPopup(()=>pop(d)).on('click',()=>pick(d.id,false))});
+ DATA.forEach(d=>layer.addLayer(markers[d.id]));
+ map.on('click',e=>setMe(e.latlng.lat,e.latlng.lng,'지도에서 지정한 위치'));
+}
+function setMe(lat,lng,label){
+ me={lat,lng};sel=null;
+ if(map){if(!meMk)meMk=L.marker([lat,lng],{icon:L.divIcon({className:'',html:'<div class="me"></div>',iconSize:[22,22],iconAnchor:[11,11]}),zIndexOffset:1000,interactive:false}).addTo(map);else meMk.setLatLng([lat,lng])}
+ $('status').dataset.label=label;render(true);
+}
+function render(fit){
+ const r=+$('rad').value,c=$('cat').value;
+ if(!me){$('list').innerHTML='';deco();return}
+ const all=DATA.filter(d=>!c||d.cat===c).map(d=>({d,k:km(me,d)})).sort((a,b)=>a.k-b.k);
+ cur=all.filter(x=>x.k<=r);
+ const near=all[0]?all[0].k:0;
+ $('status').textContent=`${$('status').dataset.label} 기준 반경 ${r>=100?'제주 전체':r+'km'} 안에 ${cur.length}곳`+(near>100?' · 제주에서 멀리 떨어져 있어요. 기준 장소를 골라 보세요.':'');
+ $('list').innerHTML=cur.map(({d,k})=>`<div class="card place ${d.id===sel?'sel':''}" data-id="${d.id}"><h3>${esc(d.name)}<em>${k<1?Math.round(k*1000)+'m':k.toFixed(1)+'km'}</em></h3>
+ <span class="tag">${esc(d.cat)}</span><span class="tag">${esc(d.d1)}</span><span class="mut">차로 약 ${Math.max(1,Math.round(k*1.3/40*60))}분</span> ${favBtn(d)}
+ ${d.title?`<p><b>${esc(d.title)}</b></p>`:''}<p class="mut">${esc(d.addr.replace('제주특별자치도 ',''))}</p>
+ ${sum(d)?`<details><summary>설명 보기</summary><div class="full">${esc(sum(d).slice(0,700))}${sum(d).length>700?'…':''}</div></details>`:''}</div>`).join('')
+ ||'<div class="empty">반경 안에 장소가 없습니다. 반경을 넓혀 보세요.</div>';
+ if(!map)return;
+ const ids=new Set(cur.map(x=>x.d.id));
+ DATA.forEach(d=>{const m=markers[d.id];ids.has(d.id)||favs.includes(d.id)?layer.addLayer(m):layer.removeLayer(m)});
+ if(circle)map.removeLayer(circle);
+ if(r<100)circle=L.circle([me.lat,me.lng],{radius:r*1000,color:'#1a73e8',weight:1,fillOpacity:.06}).addTo(map);
+ const sd=sel&&byId(sel);route.setLatLngs(sd?[[me.lat,me.lng],[sd.lat,sd.lng]]:[]);
+ if(fit){const pts=cur.map(x=>[x.d.lat,x.d.lng]).concat([[me.lat,me.lng]]);map.fitBounds(L.latLngBounds(pts),{padding:[40,40],maxZoom:13})}
+ deco();
+}
+function deco(){
+ if(map){
+  DATA.forEach(d=>{const m=markers[d.id],k=favs.indexOf(d.id);if(m._k!==k){m.setIcon(k<0?defIcon:L.divIcon({className:'',html:'<div class="num">'+(k+1)+'</div>',iconSize:[28,28],iconAnchor:[14,14]}));m.setZIndexOffset(k<0?0:500);m._k=k}});
+  fline.setLatLngs(favs.map(id=>[byId(id).lat,byId(id).lng]));
+ }
+ let tot=0;
+ const items=favs.map((id,i)=>{const d=byId(id),s=i?km(byId(favs[i-1]),d):0;tot+=s;
+  return `<li><span class="tag">${i+1}</span><b data-go="${id}">${esc(d.name)}</b><small>${i?'+'+s.toFixed(1)+'km':'출발'}</small><button data-up="${id}" title="위로">▲</button><button data-dn="${id}" title="아래로">▼</button><button data-rm="${id}" title="빼기">✕</button></li>`}).join('');
+ $('course').innerHTML=favs.length?`<h3>나의 답사 코스 · ${favs.length}곳 · 직선거리 ${tot.toFixed(1)}km</h3><ol>${items}</ol><div class="acts"><button data-fit>코스 전체 보기</button><button data-clear>비우기</button></div>`
+ :'<h3>나의 답사 코스</h3><div class="mut">카드나 핀의 “찜하기”를 누른 순서대로 지도에 선으로 이어집니다.</div>';
+}
+function toggleFav(id){
+ const i=favs.indexOf(id);i<0?favs.push(id):favs.splice(i,1);saveFavs();
+ if(markers[id])markers[id].setPopupContent(pop(byId(id)));
+ render(false);
+}
+$('course').addEventListener('click',e=>{const g=a=>e.target.dataset[a],i=favs.indexOf(g('up')||g('dn')||g('rm'));
+ if(g('go')){const d=byId(g('go'));if(map){map.setView([d.lat,d.lng],Math.max(map.getZoom(),13));markers[d.id].openPopup()}return}
+ if(g('fit')!==undefined){if(map&&favs.length)map.fitBounds(L.latLngBounds(favs.map(id=>[byId(id).lat,byId(id).lng])),{padding:[40,40],maxZoom:13});return}
+ if(g('clear')!==undefined)favs=[];
+ else if(g('rm'))favs.splice(i,1);
+ else if(g('up')&&i>0)[favs[i-1],favs[i]]=[favs[i],favs[i-1]];
+ else if(g('dn')&&i<favs.length-1)[favs[i+1],favs[i]]=[favs[i],favs[i+1]];
+ else return;
+ saveFavs();render(false);
+});
+function pick(id,go=true){
+ sel=id;const d=DATA.find(x=>x.id===id);
+ document.querySelectorAll('.place').forEach(e=>e.classList.toggle('sel',e.dataset.id===id));
+ if(map){route.setLatLngs(me?[[me.lat,me.lng],[d.lat,d.lng]]:[]);if(go){map.panTo([d.lat,d.lng]);markers[id].openPopup()}}
+ const el=document.querySelector('.place.sel');if(el&&!go)el.scrollIntoView({block:'nearest'});
+}
+$('list').addEventListener('click',e=>{if(e.target.closest('details')||e.target.closest('.fav'))return;const p=e.target.closest('.place');if(p)pick(p.dataset.id)});
+$('rad').onchange=()=>render(true);$('cat').onchange=()=>render(true);
+$('preset').onchange=e=>{const p=PRESETS[e.target.value];if(p)setMe(p[1],p[2],p[0])};
+$('gps').onclick=()=>{
+ if(!navigator.geolocation){$('status').textContent='이 브라우저는 위치 기능을 지원하지 않습니다. 기준 장소를 선택하거나 지도를 눌러 주세요.';return}
+ $('status').textContent='위치 확인 중…';
+ navigator.geolocation.getCurrentPosition(p=>{$('preset').value='';setMe(p.coords.latitude,p.coords.longitude,'내 위치')},
+  ()=>{$('status').textContent='위치를 가져오지 못했습니다(권한 거부 또는 파일로 열린 페이지 제한). 기준 장소를 선택하거나 지도를 눌러 위치를 지정해 주세요.'},{timeout:10000});
+};
+render();
+</script>
+<script>
+fetch('/api/places').then(async r=>{const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error||('HTTP '+r.status));return j})
+.then(d=>{window.__DATA=d.items;document.body.classList.remove('loading');document.getElementById('boot').remove();
+ const s=document.createElement('script');s.textContent=document.getElementById('app').textContent;document.body.appendChild(s)})
+.catch(e=>{document.getElementById('boot').innerHTML='데이터를 불러오지 못했습니다.<br><small></small>';document.querySelector('#boot small').textContent=(e.message==='Failed to fetch'?'서버에 연결할 수 없습니다. node server.js 로 서버를 실행한 뒤 http://localhost:3000 으로 접속하세요.':e.message)});
+</script>
+</body>
+</html>
